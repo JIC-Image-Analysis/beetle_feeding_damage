@@ -4,6 +4,8 @@ import os
 import logging
 import argparse
 
+from dtoolcore import DataSet
+
 from jicbioimage.core.image import Image
 from jicbioimage.core.transform import transformation
 from jicbioimage.core.io import AutoName, AutoWrite
@@ -26,6 +28,29 @@ def analyse_file(fpath, output_directory):
     image = identity(image)
 
 
+def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
+    """Analyse all the files in the dataset."""
+    dataset = DataSet.from_path(dataset_dir)
+    logging.info("Analysing files in dataset: {}".format(dataset.name))
+
+    i = dataset.identifiers[0]
+    rel_path = dataset.abspath_from_identifier(i)
+
+    analyse_file(rel_path, output_dir)
+
+    # # for i in dataset.identifiers:
+
+    # i = dataset.identifiers[0]
+    # rel_path = dataset.item_path_from_hash(i)
+
+    # output_basename = output_name_from_dataset_and_identifier(dataset, i)
+    # output_dirname = os.path.join(output_dir, output_basename)
+    # if not os.path.isdir(output_dirname):
+    #     os.mkdir(output_dirname)
+
+    # analyse_file(rel_path, output_dirname)
+
+
 def analyse_directory(input_directory, output_directory):
     """Analyse all the files in a directory."""
     logging.info("Analysing files in directory: {}".format(input_directory))
@@ -41,6 +66,8 @@ def main():
     parser.add_argument("output_dir", help="Output directory")
     parser.add_argument("--debug", default=False, action="store_true",
                         help="Write out intermediate images")
+    parser.add_argument("--test", default=False, action="store_true",
+                        help="Use only test data")
     args = parser.parse_args()
 
     # Create the output directory if it does not exist.
@@ -65,12 +92,8 @@ def main():
     logging.info("Script version: {}".format(__version__))
 
     # Run the analysis.
-    if os.path.isfile(args.input_source):
-        analyse_file(args.input_source, args.output_dir)
-    elif os.path.isdir(args.input_source):
-        analyse_directory(args.input_source, args.output_dir)
-    else:
-        parser.error("{} not a file or directory".format(args.input_source))
+    analyse_dataset(args.input_source, args.output_dir, args.test)
+
 
 if __name__ == "__main__":
     main()
