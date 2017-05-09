@@ -10,6 +10,20 @@ from jicbioimage.core.image import Image
 from jicbioimage.core.transform import transformation
 from jicbioimage.core.io import AutoName, AutoWrite
 
+from skimage.morphology import disk
+
+from jicbioimage.transform import (
+    invert,
+    threshold_otsu,
+    remove_small_objects,
+    erode_binary
+)
+
+from jicbioimage.segment import (
+    watershed_with_seeds,
+    connected_components
+)
+
 __version__ = "0.0.1"
 
 AutoName.prefix_format = "{:03d}_"
@@ -21,11 +35,37 @@ def identity(image):
     return image
 
 
+@transformation
+def select_red(image):
+    return image[:, :, 0]
+
+
+@transformation
+def fill_small_holes(image, min_size):
+    aw = AutoWrite.on
+    AutoWrite.on = False
+    image = invert(image)
+    image = remove_small_objects(image, min_size=min_size)
+    image = invert(image)
+    AutoWrite.on = aw
+    return image
+
+
 def analyse_file(fpath, output_directory):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
     image = Image.from_file(fpath)
     image = identity(image)
+    image = select_red(image)
+    image = invert(image)
+    image = threshold_otsu(image)
+
+    seeds = remove_small_objects(image, min_size=1000)
+    seeds = fill_small_holes(seeds, min_size=1000)
+    seeds = erode_binary(seeds, selem=disk(30))
+    seeds = connected_components(seeds, background=0)
+
+    watershed_with_seeds(-image, seeds=seeds, mask=image)
 
 
 def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
