@@ -56,6 +56,16 @@ def fill_small_holes(image, min_size):
     return image
 
 
+def fill_small_holes_in_region(region, min_size):
+    aw = AutoWrite.on
+    AutoWrite.on = False
+    region = invert(region)
+    region = remove_small_objects(region, min_size=min_size)
+    region = invert(region)
+    AutoWrite.on = aw
+    return region
+
+
 def analyse_file_org(fpath, output_directory):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
@@ -92,6 +102,15 @@ def find_mask(image):
     return mask
 
 
+@transformation
+def post_process_segmentation(segmentation):
+    for i in segmentation.identifiers:
+        region = segmentation.region_by_identifier(i)
+        region = fill_small_holes_in_region(region, 5000)
+        segmentation[region] = i
+    return segmentation
+
+
 def analyse_file(fpath, output_directory):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
@@ -102,7 +121,8 @@ def analyse_file(fpath, output_directory):
     seeds = find_seeds(negative)
     mask = find_mask(negative)
 
-    watershed_with_seeds(negative, seeds=seeds, mask=mask)
+    segmentation = watershed_with_seeds(negative, seeds=seeds, mask=mask)
+    segmentation = post_process_segmentation(segmentation)
 
 
 def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
