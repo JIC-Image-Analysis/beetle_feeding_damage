@@ -16,7 +16,7 @@ from jicbioimage.transform import (
     invert,
     threshold_otsu,
     remove_small_objects,
-    erode_binary
+    erode_binary,
 )
 
 from jicbioimage.segment import (
@@ -41,6 +41,11 @@ def select_red(image):
 
 
 @transformation
+def threshold_abs(image, min_value):
+    return image > min_value
+
+
+@transformation
 def fill_small_holes(image, min_size):
     aw = AutoWrite.on
     AutoWrite.on = False
@@ -51,7 +56,7 @@ def fill_small_holes(image, min_size):
     return image
 
 
-def analyse_file(fpath, output_directory):
+def analyse_file_org(fpath, output_directory):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
     image = Image.from_file(fpath)
@@ -66,6 +71,38 @@ def analyse_file(fpath, output_directory):
     seeds = connected_components(seeds, background=0)
 
     watershed_with_seeds(-image, seeds=seeds, mask=image)
+
+
+def get_negative_single_channel(image):
+    negative = identity(image)
+    negative = select_red(negative)
+    negative = invert(negative)
+    return negative
+
+
+def find_seeds(image):
+    seeds = threshold_abs(image, 200)
+    seeds = remove_small_objects(seeds, min_size=1000)
+    seeds = connected_components(seeds, background=0)
+    return seeds
+
+
+def find_mask(image):
+    mask = threshold_abs(image, 170)
+    return mask
+
+
+def analyse_file(fpath, output_directory):
+    """Analyse a single file."""
+    logging.info("Analysing file: {}".format(fpath))
+
+    image = Image.from_file(fpath)
+
+    negative = get_negative_single_channel(image)
+    seeds = find_seeds(negative)
+    mask = find_mask(negative)
+
+    watershed_with_seeds(negative, seeds=seeds, mask=mask)
 
 
 def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
