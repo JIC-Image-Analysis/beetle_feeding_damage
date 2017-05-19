@@ -24,6 +24,8 @@ from jicbioimage.segment import (
     connected_components
 )
 
+from jicbioimage.illustrate import Canvas
+
 __version__ = "0.0.1"
 
 AutoName.prefix_format = "{:03d}_"
@@ -111,6 +113,15 @@ def post_process_segmentation(segmentation):
     return segmentation
 
 
+@transformation
+def annotate(image, segmentation):
+    ann = image.view(Canvas)
+    for i in segmentation.identifiers:
+        region = segmentation.region_by_identifier(i)
+        ann.mask_region(region.inner.border.dilate(), (255, 0, 0))
+    return ann
+
+
 def analyse_file(fpath, output_directory):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
@@ -123,6 +134,8 @@ def analyse_file(fpath, output_directory):
 
     segmentation = watershed_with_seeds(negative, seeds=seeds, mask=mask)
     segmentation = post_process_segmentation(segmentation)
+
+    annotate(image, segmentation)
 
 
 def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
