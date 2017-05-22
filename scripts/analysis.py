@@ -3,6 +3,7 @@
 import os
 import logging
 import argparse
+import errno
 
 from dtoolcore import DataSet
 
@@ -125,6 +126,7 @@ def annotate(image, segmentation):
 def analyse_file(fpath, output_directory):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
+    AutoName.directory = output_directory
 
     image = Image.from_file(fpath)
 
@@ -138,15 +140,34 @@ def analyse_file(fpath, output_directory):
     annotate(image, segmentation)
 
 
+def safe_mkdir(directory):
+    try:
+        os.makedirs(directory)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(directory):
+            pass
+        else:
+            raise
+
+def data_item_directory(output_directory, rel_path):
+    abs_path = os.path.join(output_directory, rel_path)
+    safe_mkdir(abs_path)
+    return abs_path
+
+
 def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
     """Analyse all the files in the dataset."""
     dataset = DataSet.from_path(dataset_dir)
     logging.info("Analysing files in dataset: {}".format(dataset.name))
 
     i = dataset.identifiers[0]
-    rel_path = dataset.abspath_from_identifier(i)
+    abs_path = dataset.abspath_from_identifier(i)
+    item_info = dataset.item_from_identifier(i)
 
-    analyse_file(rel_path, output_dir)
+
+    specific_output_dir = data_item_directory(output_dir, item_info["path"])
+    print(specific_output_dir)
+    analyse_file(abs_path, specific_output_dir)
 
     # # for i in dataset.identifiers:
 
