@@ -160,26 +160,12 @@ def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
     dataset = DataSet.from_path(dataset_dir)
     logging.info("Analysing files in dataset: {}".format(dataset.name))
 
-    i = dataset.identifiers[0]
-    abs_path = dataset.abspath_from_identifier(i)
-    item_info = dataset.item_from_identifier(i)
+    for i in dataset.identifiers:
+        abs_path = dataset.abspath_from_identifier(i)
+        item_info = dataset.item_from_identifier(i)
 
-
-    specific_output_dir = data_item_directory(output_dir, item_info["path"])
-    print(specific_output_dir)
-    analyse_file(abs_path, specific_output_dir)
-
-    # # for i in dataset.identifiers:
-
-    # i = dataset.identifiers[0]
-    # rel_path = dataset.item_path_from_hash(i)
-
-    # output_basename = output_name_from_dataset_and_identifier(dataset, i)
-    # output_dirname = os.path.join(output_dir, output_basename)
-    # if not os.path.isdir(output_dirname):
-    #     os.mkdir(output_dirname)
-
-    # analyse_file(rel_path, output_dirname)
+        specific_output_dir = data_item_directory(output_dir, item_info["path"])
+        analyse_file(abs_path, specific_output_dir)
 
 
 def analyse_directory(input_directory, output_directory):
