@@ -122,9 +122,17 @@ def process_leaf(whole_leaf, eaten_leaf, ann):
     bounding_box = np.zeros(ann.shape[0:2]).view(Region)
     bounding_box[np.min(ys):np.max(ys), np.min(xs):np.max(xs)] = True
 
+    eaten_fraction = float(eaten_leaf.area) / float(whole_leaf.area)
+    percentage_eaten = (1.0 - eaten_fraction) * 100
+
     ann.mask_region(eaten_leaf.inner.border.dilate(), (255, 0, 255))
     ann.mask_region(whole_leaf.inner.border.dilate(), (0, 255, 255))
     ann.mask_region(bounding_box.inner.border.dilate(), (255, 0, 0))
+
+    ann.text_at(
+        "{:.0f}%".format(percentage_eaten),
+        (np.min(ys) + 10, np.min(xs) + 10),
+        size=56)
 
     return ann
 
