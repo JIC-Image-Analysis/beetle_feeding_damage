@@ -163,7 +163,10 @@ def analyse_file(fpath, output_directory, test_data_only=False):
     whole_leaf_segmentation = post_process_segmentation(
         eaten_leaf_segmentation.copy())
 
-    annotate(image, whole_leaf_segmentation, eaten_leaf_segmentation)
+    ann = annotate(image, whole_leaf_segmentation, eaten_leaf_segmentation)
+    ann_fpath = os.path.join(output_directory, "annotated.png")
+    with open(ann_fpath, "wb") as fh:
+        fh.write(ann.png())
 
 
 def safe_mkdir(directory):
