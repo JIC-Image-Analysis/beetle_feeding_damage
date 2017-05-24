@@ -112,7 +112,7 @@ def find_mask(image):
 def post_process_segmentation(segmentation):
     for i in segmentation.identifiers:
         region = segmentation.region_by_identifier(i)
-        region = fill_small_holes_in_region(region, 5000)
+        region = fill_small_holes_in_region(region, 10000)
         segmentation[region] = i
     return segmentation
 
