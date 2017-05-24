@@ -5,6 +5,8 @@ import logging
 import argparse
 import errno
 
+import numpy as np
+
 from dtoolcore import DataSet
 
 from jicbioimage.core.image import Image
@@ -22,7 +24,8 @@ from jicbioimage.transform import (
 
 from jicbioimage.segment import (
     watershed_with_seeds,
-    connected_components
+    connected_components,
+    Region,
 )
 
 from jicbioimage.illustrate import Canvas
@@ -114,16 +117,29 @@ def post_process_segmentation(segmentation):
     return segmentation
 
 
-@transformation
-def annotate(image, segmentation):
-    ann = image.view(Canvas)
-    for i in segmentation.identifiers:
-        region = segmentation.region_by_identifier(i)
-        ann.mask_region(region.inner.border.dilate(), (255, 0, 0))
+def process_leaf(whole_leaf, eaten_leaf, ann):
+    ys, xs = whole_leaf.index_arrays
+    bounding_box = np.zeros(ann.shape[0:2]).view(Region)
+    bounding_box[np.min(ys):np.max(ys), np.min(xs):np.max(xs)] = True
+
+    ann.mask_region(eaten_leaf.inner.border.dilate(), (255, 0, 255))
+    ann.mask_region(whole_leaf.inner.border.dilate(), (0, 255, 255))
+    ann.mask_region(bounding_box.inner.border.dilate(), (255, 0, 0))
+
     return ann
 
 
-def analyse_file(fpath, output_directory):
+@transformation
+def annotate(image, whole_leaf_segmentation, eaten_leaf_segmentation):
+    ann = image.view(Canvas)
+    for i in whole_leaf_segmentation.identifiers:
+        whole_leaf_region = whole_leaf_segmentation.region_by_identifier(i)
+        eaten_leaf_region = eaten_leaf_segmentation.region_by_identifier(i)
+        ann = process_leaf(whole_leaf_region, eaten_leaf_region, ann)
+    return ann
+
+
+def analyse_file(fpath, output_directory, test_data_only=False):
     """Analyse a single file."""
     logging.info("Analysing file: {}".format(fpath))
     AutoName.directory = output_directory
@@ -134,10 +150,12 @@ def analyse_file(fpath, output_directory):
     seeds = find_seeds(negative)
     mask = find_mask(negative)
 
-    segmentation = watershed_with_seeds(negative, seeds=seeds, mask=mask)
-    segmentation = post_process_segmentation(segmentation)
+    eaten_leaf_segmentation = watershed_with_seeds(
+        negative, seeds=seeds, mask=mask)
+    whole_leaf_segmentation = post_process_segmentation(
+        eaten_leaf_segmentation.copy())
 
-    annotate(image, segmentation)
+    annotate(image, whole_leaf_segmentation, eaten_leaf_segmentation)
 
 
 def safe_mkdir(directory):
@@ -148,6 +166,7 @@ def safe_mkdir(directory):
             pass
         else:
             raise
+
 
 def data_item_directory(output_directory, rel_path):
     abs_path = os.path.join(output_directory, rel_path)
@@ -164,8 +183,11 @@ def analyse_dataset(dataset_dir, output_dir, test_data_only=False):
         abs_path = dataset.abspath_from_identifier(i)
         item_info = dataset.item_from_identifier(i)
 
-        specific_output_dir = data_item_directory(output_dir, item_info["path"])
-        analyse_file(abs_path, specific_output_dir)
+        specific_output_dir = data_item_directory(
+            output_dir, item_info["path"])
+        analyse_file(abs_path, specific_output_dir, test_data_only)
+        if test_data_only:
+            break
 
 
 def analyse_directory(input_directory, output_directory):
