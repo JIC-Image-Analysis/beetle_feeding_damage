@@ -30,7 +30,7 @@ from jicbioimage.segment import (
 
 from jicbioimage.illustrate import Canvas
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 AutoName.prefix_format = "{:03d}_"
 
